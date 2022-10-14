@@ -4,10 +4,14 @@ from sklearn.neighbors import DistanceMetric
 from sklearn.cluster import DBSCAN
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
-
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.manifold import TSNE
+from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeRegressor
 assitant = {}
 data = pd.read_csv('Portuguese.csv')
-print (data.columns)
 
 i=0
 for label in data.isna().sum() : 
@@ -42,14 +46,97 @@ for col in data.columns:
     vals = data[col].unique()
     if len(vals) == 2 :
         data[col] = apply_zerone(col,vals)
+
 data_dummy = pd.get_dummies(data, drop_first=True)
 
+for i in range(3):
+    data_std = StandardScaler().fit_transform(data_dummy)
+    data_pca = PCA(n_components=2).fit_transform(data_std)
 
-# def remove_shekr():
-#     data.drop(, inplace=True, axis=1)
-print (len(data_dummy.columns))
-print (data_dummy.columns)
-print (data_dummy.head(50))
-print (target)
-print(assitant)
+    data_pca = np.vstack((data_pca.T, target)).T
 
+    df_pca = pd.DataFrame(data_pca, columns=['First_Component',
+                                        'Second_Component',
+                                        'class'])
+    df_pca['class'].apply(int)
+    sns.FacetGrid(data=df_pca, hue='class')\
+       .map(plt.scatter, 'First_Component', 'Second_Component')\
+       .add_legend();
+
+
+    # plt.scatter(df_pca['First_Component'][df_pca['class'] == 0], df_pca['Second_Component'][df_pca['class'] == 0], color='blue')
+    # plt.scatter(df_pca['First_Component'][df_pca['class'] == 1], df_pca['Second_Component'][df_pca['class'] == 1],  color='red')
+    # plt.scatter(df_pca['First_Component'][df_pca['class'] == 2], df_pca['Second_Component'][df_pca['class'] == 2], color='yellow')
+    plt.show()
+
+
+    pca = PCA(n_components=len(data_std[0]))
+    X_pca = pca.fit_transform(data_std)
+
+    percent_var_explained = pca.explained_variance_ / np.sum(pca.explained_variance_)
+
+    cum_var_explained = np.cumsum(percent_var_explained)
+
+    # Plot the PCA Spectrum
+    plt.figure(1, figsize=(12, 6))
+    plt.clf()
+    plt.plot(cum_var_explained, linewidth=2)
+    plt.axis('tight')
+    plt.grid()
+    plt.xlabel('n_components')
+    plt.ylabel('Cumulative Explained Variance');
+    plt.show()
+
+    tsne = TSNE(n_components=2, random_state=0)
+
+    data_tsne = tsne.fit_transform(data_std)
+
+    X_tsne_data = np.vstack((data_tsne.T, target)).T
+    df_tsne = pd.DataFrame(X_tsne_data, columns=['Dim1', 'Dim2', 'class'])
+    df_tsne['class'].apply(int)
+    #Plot the 2 components from t-SNE
+    sns.FacetGrid(df_tsne, hue='class')\
+       .map(plt.scatter, 'Dim1', 'Dim2')\
+       .add_legend();
+    plt.show()
+
+    pred = LogisticRegression(random_state=0, multi_class="multinomial").fit(data_std, target)
+    pred2 = np.copy(pred) 
+    importance = pred.coef_
+    ez = np.abs(pred.coef_)
+    to_remove_log = np.argsort(ez)
+
+    # for i in importance :
+    #     plt.bar([x for x in range(len(i))], i)
+    #     plt.title('significance of parameters for logistic regression')
+    #     plt.show()
+
+    model = DecisionTreeRegressor()
+    model.fit(data_std, target)
+    importance = model.feature_importances_
+    to_remove_tree = np.argsort(importance)
+    # summarize feature importance
+    fig = plt.figure()
+    ax = fig.add_subplot(1, 1, 1) # I actually have many subplots, but this is not related to a problem
+    ax.bar([x for x in data_dummy.columns], importance, align='center')
+    ax.set_title('significance of parameters for Random Trees predictor')
+    ax.set_ylabel('significance')
+    ax.set_xticklabels([x for x in data_dummy.columns], rotation=70, ha='center')
+
+    # plt.bar(, )
+    # plt.title()
+    plt.show()
+    remove_list = np.copy(data_dummy.columns)
+
+    for x in range (len(to_remove_tree)//3): # by trees
+        data_dummy.drop(remove_list[to_remove_tree[x]], inplace=True, axis=1)
+
+    # for row in to_remove_log :  #by logistic regression 
+    #     for i in range(len(row)//3) : 
+    #         try:
+    #              data_dummy.drop(data.columns[row[i]], inplace=True, axis=1)
+    #         except:
+    #             pass
+    print ([remove_list[s] for s in np.argsort(importance)[-10:]], "top 10 parameters")
+
+print('End')
