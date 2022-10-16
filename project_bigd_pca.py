@@ -171,6 +171,3 @@ TOP_SEV['top'] = TOP_sev_c
 
 logistic(data_dummy, target_b, 'fails')
 logistic(data_dummy, target_c, 'top')
-plt.show()
-
-print('End')
