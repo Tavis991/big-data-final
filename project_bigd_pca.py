@@ -10,8 +10,15 @@ import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeRegressor
+from copy import deepcopy
+
+
+legends = {'fails' : {'fails' : 'orange', 'other' : 'blue'}, 'top':{'top' : 'orange', 'other' : 'blue'}}
 assitant = {}
+TOP_TEN = {}
+TOP_SEV = {}
 data = pd.read_csv('Portuguese.csv')
+# t_data, v_data = data.randomSplit([0.8, 0.2], 1)
 
 i=0
 for label in data.isna().sum() : 
@@ -23,10 +30,12 @@ if not i :
 
 target = data['G3'] 
 thresh = (target.max() - target.min()) / 3
-lam = lambda x : 0 if x < thresh else  1 if x < 2*thresh else 2 
- 
+lam = lambda x : 0 if x < thresh else  1 if x < 2*thresh else 2  #3 class   
+lam_fail = lambda x : 1 if x < 7.5 else  0  # 2 class seperator, fail and other
+lam_top = lambda x : 0 if x < 14 else  1  # 2 class, top and other 
+
 #dividing grades into 3 groups
-target = target.apply(lam)
+
 
 def apply_zerone(col, vals):
   
@@ -49,7 +58,9 @@ for col in data.columns:
 
 data_dummy = pd.get_dummies(data, drop_first=True)
 
-for i in range(3):
+
+def analyze(data_dummy, target, param):
+
     data_std = StandardScaler().fit_transform(data_dummy)
     data_pca = PCA(n_components=2).fit_transform(data_std)
 
@@ -61,13 +72,9 @@ for i in range(3):
     df_pca['class'].apply(int)
     sns.FacetGrid(data=df_pca, hue='class')\
        .map(plt.scatter, 'First_Component', 'Second_Component')\
-       .add_legend();
+       .add_legend(legends[param]);
 
-
-    # plt.scatter(df_pca['First_Component'][df_pca['class'] == 0], df_pca['Second_Component'][df_pca['class'] == 0], color='blue')
-    # plt.scatter(df_pca['First_Component'][df_pca['class'] == 1], df_pca['Second_Component'][df_pca['class'] == 1],  color='red')
-    # plt.scatter(df_pca['First_Component'][df_pca['class'] == 2], df_pca['Second_Component'][df_pca['class'] == 2], color='yellow')
-    plt.show()
+    # plt.show()
 
 
     pca = PCA(n_components=len(data_std[0]))
@@ -85,7 +92,7 @@ for i in range(3):
     plt.grid()
     plt.xlabel('n_components')
     plt.ylabel('Cumulative Explained Variance');
-    plt.show()
+    # plt.show()
 
     tsne = TSNE(n_components=2, random_state=0)
 
@@ -97,46 +104,73 @@ for i in range(3):
     #Plot the 2 components from t-SNE
     sns.FacetGrid(df_tsne, hue='class')\
        .map(plt.scatter, 'Dim1', 'Dim2')\
-       .add_legend();
-    plt.show()
-
-    pred = LogisticRegression(random_state=0, multi_class="multinomial").fit(data_std, target)
-    pred2 = np.copy(pred) 
-    importance = pred.coef_
-    ez = np.abs(pred.coef_)
-    to_remove_log = np.argsort(ez)
-
-    # for i in importance :
-    #     plt.bar([x for x in range(len(i))], i)
-    #     plt.title('significance of parameters for logistic regression')
-    #     plt.show()
+       .add_legend(legends[param]);
+    # plt.show()
 
     model = DecisionTreeRegressor()
     model.fit(data_std, target)
-    importance = model.feature_importances_
+    importance = model.feature_importances_ 
     to_remove_tree = np.argsort(importance)
     # summarize feature importance
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1) # I actually have many subplots, but this is not related to a problem
     ax.bar([x for x in data_dummy.columns], importance, align='center')
-    ax.set_title('significance of parameters for Random Trees predictor')
+    ax.set_title('significance of parameters for Decision Tree predictor')
     ax.set_ylabel('significance')
     ax.set_xticklabels([x for x in data_dummy.columns], rotation=70, ha='center')
+    fig.legend(legends[param])
+    # plt.show()
 
-    # plt.bar(, )
-    # plt.title()
-    plt.show()
     remove_list = np.copy(data_dummy.columns)
 
     for x in range (len(to_remove_tree)//3): # by trees
         data_dummy.drop(remove_list[to_remove_tree[x]], inplace=True, axis=1)
 
-    # for row in to_remove_log :  #by logistic regression 
-    #     for i in range(len(row)//3) : 
-    #         try:
-    #              data_dummy.drop(data.columns[row[i]], inplace=True, axis=1)
-    #         except:
-    #             pass
-    print ([remove_list[s] for s in np.argsort(importance)[-10:]], "top 10 parameters")
+    top_ten = [remove_list[s] for s in np.argsort(importance)[-10:]]
+    top_sev = [remove_list[s] for s in np.argsort(importance)[-7:]]
+    print (top_ten, f"top 10 parameters for {param}")
+    return top_ten, top_sev
+
+def logistic(data_std, target, param):
+    data_std = StandardScaler().fit_transform(data_dummy[TOP_TEN[param]])
+    pred = LogisticRegression(random_state=0, multi_class="multinomial").fit(data_std, target)
+    importance = pred.coef_
+
+    fig = plt.figure()
+    for i in range(len(importance)) :
+        ax = fig.add_subplot(1, 1, 1) 
+        ax.bar([x for x in TOP_TEN[param]], importance[i], align='center')
+        ax.set_xticklabels([x for x in TOP_TEN[param]], rotation=70, ha='center')
+       # plt.bar([x for x in range(len(i))], i)
+        ax.set_title(f'significance of parameters for {param}, logistic regression ')
+       # plt.legend(legends[param])
+
+    print(f'score for prediction of {param}: ', pred.score(data_std, target))
+    plt.show()
+
+# target_a = target.apply(lam)
+
+# for i in range(3):
+#     analyze(data_dummy, target_a)
+
+target_b = target.apply(lam_fail)
+data = deepcopy(data_dummy)
+
+for i in range (3): 
+     TOP_TEN_b, TOP_sev_b = analyze(data, target_b, 'fails')
+TOP_TEN['fails'] = TOP_TEN_b
+TOP_SEV['fails'] = TOP_sev_b
+
+target_c = target.apply(lam_top)
+data = deepcopy(data_dummy)
+
+for i in range (3): 
+    TOP_TEN_c, TOP_sev_c = analyze(data, target_c, 'top')
+TOP_TEN['top'] = TOP_TEN_c
+TOP_SEV['top'] = TOP_sev_c
+
+logistic(data_dummy, target_b, 'fails')
+logistic(data_dummy, target_c, 'top')
+plt.show()
 
 print('End')
