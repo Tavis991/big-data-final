@@ -33,7 +33,7 @@ def apply_zerone(data, col, vals):#for replacing categorical data to binary data
     ASSITANT[col] = {vals[0] : 0, vals[1] :1}
     return data[col].replace({ vals[0] : 0, vals[1] : 1})
 
-def analyze(data_dummy, target, param): #main analysis function - PCA, sTNE, decision tree, 
+def analyze(data_dummy, target, param, zone): #main analysis function - PCA, sTNE, decision tree, 
 
     data_std = StandardScaler().fit_transform(data_dummy)
     data_pca = PCA(n_components=2).fit_transform(data_std)
@@ -48,7 +48,7 @@ def analyze(data_dummy, target, param): #main analysis function - PCA, sTNE, dec
     for c in df_pca['class'].unique():     
         plt.scatter(df_pca[df_pca['class'] == c]['First_Component'], \
             df_pca[df_pca['class'] == c]['Second_Component'], color = LEGENDS_NUM[param][c])
-    plt.title(f'pca for {param}')
+    plt.title(f'pca for {param} in {zone}')
     plt.legend(LEGENDS[param])   
 
 
@@ -80,7 +80,7 @@ def analyze(data_dummy, target, param): #main analysis function - PCA, sTNE, dec
     for c in df_tsne['class'].unique():     
         plt.scatter(df_tsne[df_tsne['class'] == c]['Dim1'], \
             df_tsne[df_tsne['class'] == c]['Dim2'], color = LEGENDS_NUM[param][c])
-    plt.title(f'pca for {param}')
+    plt.title(f'tSNE for {param} in {zone}')
     plt.legend(list(LEGENDS[param].keys()))   
 
     # plt.show()
@@ -93,7 +93,7 @@ def analyze(data_dummy, target, param): #main analysis function - PCA, sTNE, dec
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1) 
     ax.bar([x for x in data_dummy.columns], importance, align='center')
-    ax.set_title('significance of parameters for Decision Tree predictor')
+    ax.set_title(f'significance of parameters for {param} in {zone} Decision Tree predictor')
     ax.set_ylabel('significance')
     ax.set_xticklabels([x for x in data_dummy.columns], rotation=70, ha='center')
     fig.legend(LEGENDS[param])
@@ -104,10 +104,10 @@ def analyze(data_dummy, target, param): #main analysis function - PCA, sTNE, dec
         data_dummy.drop(remove_list[to_remove_tree[x]], inplace=True, axis=1)
 
     top_ten = [remove_list[s] for s in np.argsort(importance)[-10:]]
-    print (top_ten, f"top 10 parameters for {param}")
+    print (top_ten, f"top 10 parameters for {param} in {zone}")
     return top_ten
 
-def logistic(data_dummy, target, param): #logistic regression, with 10 top parameters of prior analysis  
+def logistic(data_dummy, target, param, zone): #logistic regression, with 10 top parameters of prior analysis  
     data_std = StandardScaler().fit_transform(data_dummy[TOP_TEN[param]])
     pred = LogisticRegression(random_state=0, multi_class="multinomial").fit(data_std, target)
     importance = pred.coef_
@@ -117,13 +117,13 @@ def logistic(data_dummy, target, param): #logistic regression, with 10 top param
         ax = fig.add_subplot(1, 1, 1) 
         ax.bar([x for x in TOP_TEN[param]], importance[i], align='center')
         ax.set_xticklabels([x for x in TOP_TEN[param]], rotation=70, ha='center')
-        ax.set_title(f'significance of parameters for {param}, logistic regression ')
+        ax.set_title(f'significance of parameters for {param} in {zone}, logistic regression ')
         fig.legend(LEGENDS[param])
 
-    print(f'score for prediction of {param}: ', pred.score(data_std, target))
+    print(f'score for prediction of {param} for {zone}: ', pred.score(data_std, target))
     plt.show()
 
-def read_data(file): #main function 
+def read_data(file, zone): #main function 
     data = pd.read_csv(file)
     i=0
     for label in data.isna().sum() :  #data verification, checking for null values 
@@ -148,18 +148,18 @@ def read_data(file): #main function
     data = deepcopy(data_dummy)
 
     for i in range (3): #here we reduce number of features to top 10 
-        TOP_TEN_b= analyze(data, target_b, 'fails')
+        TOP_TEN_b= analyze(data, target_b, 'fails', zone)
     TOP_TEN['fails'] = TOP_TEN_b
 
     target_c = target.apply(lam_top)
     data = deepcopy(data_dummy)
 
     for i in range (3): 
-        TOP_TEN_c= analyze(data, target_c, 'top')
+        TOP_TEN_c= analyze(data, target_c, 'top', zone)
     TOP_TEN['top'] = TOP_TEN_c
 
-    logistic(data_dummy, target_b, 'fails')
-    logistic(data_dummy, target_c, 'top')
+    logistic(data_dummy, target_b, 'fails', zone)
+    logistic(data_dummy, target_c, 'top', zone)
 
 for file in ['Maths.csv', 'Portuguese.csv'] :
-    read_data(file)
+    read_data(file, file.split('.')[0])
