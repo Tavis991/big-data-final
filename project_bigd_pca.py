@@ -59,14 +59,15 @@ for i in range(3):
                                         'Second_Component',
                                         'class'])
     df_pca['class'].apply(int)
-    sns.FacetGrid(data=df_pca, hue='class')\
-       .map(plt.scatter, 'First_Component', 'Second_Component')\
-       .add_legend();
+    # sns.FacetGrid(data=df_pca, hue='class')\
+    #    .map(plt.scatter, 'First_Component', 'Second_Component')\
+    #    .add_legend();
 
-
-    # plt.scatter(df_pca['First_Component'][df_pca['class'] == 0], df_pca['Second_Component'][df_pca['class'] == 0], color='blue')
-    # plt.scatter(df_pca['First_Component'][df_pca['class'] == 1], df_pca['Second_Component'][df_pca['class'] == 1],  color='red')
-    # plt.scatter(df_pca['First_Component'][df_pca['class'] == 2], df_pca['Second_Component'][df_pca['class'] == 2], color='yellow')
+    plt.figure()
+    plt.scatter(df_pca['First_Component'][df_pca['class'] == 0], df_pca['Second_Component'][df_pca['class'] == 0], color='blue', label='fail')
+    plt.scatter(df_pca['First_Component'][df_pca['class'] == 1], df_pca['Second_Component'][df_pca['class'] == 1],  color='red', label='medium')
+    plt.scatter(df_pca['First_Component'][df_pca['class'] == 2], df_pca['Second_Component'][df_pca['class'] == 2], color='yellow', label='top')
+    plt.legend()
     plt.show()
 
 
@@ -95,9 +96,16 @@ for i in range(3):
     df_tsne = pd.DataFrame(X_tsne_data, columns=['Dim1', 'Dim2', 'class'])
     df_tsne['class'].apply(int)
     #Plot the 2 components from t-SNE
-    sns.FacetGrid(df_tsne, hue='class')\
-       .map(plt.scatter, 'Dim1', 'Dim2')\
-       .add_legend();
+    # sns.FacetGrid(df_tsne, hue='class')\
+    #    .map(plt.scatter, 'Dim1', 'Dim2')\
+    #    .add_legend();
+    # plt.show()
+
+    plt.figure()
+    plt.scatter(df_tsne['Dim1'][df_tsne['class'] == 0], df_tsne['Dim2'][df_tsne['class'] == 0], color='cyan', label='fail')
+    plt.scatter(df_tsne['Dim1'][df_tsne['class'] == 1], df_tsne['Dim2'][df_tsne['class'] == 1],  color='black', label='medium')
+    plt.scatter(df_tsne['Dim1'][df_tsne['class'] == 2], df_tsne['Dim2'][df_tsne['class'] == 2], color='green', label='top')
+    plt.legend()
     plt.show()
 
     pred = LogisticRegression(random_state=0, multi_class="multinomial").fit(data_std, target)
