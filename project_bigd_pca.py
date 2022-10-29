@@ -1,3 +1,4 @@
+from turtle import title
 import pandas as pd 
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
@@ -9,7 +10,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeRegressor
 from copy import deepcopy
 
-
+LEGENDS_NUM = {'fails': {1: 'orange', 0: 'blue'}, 'top': {1: 'orange', 0: 'blue'}}
 LEGENDS = {'fails': {'fails': 'orange', 'other': 'blue'}, 'top': {'top': 'orange', 'other': 'blue'}}
 ASSITANT = {}
 TOP_TEN = {}
@@ -42,10 +43,15 @@ def analyze(data_dummy, target, param): #main analysis function - PCA, sTNE, dec
     df_pca = pd.DataFrame(data_pca, columns=['First_Component',
                                         'Second_Component',
                                         'class'])
-    df_pca['class'].apply(int)
-    sns.FacetGrid(data=df_pca, hue='class')\
-       .map(plt.scatter, 'First_Component', 'Second_Component')\
-       .add_legend(LEGENDS[param]);
+    df_pca['class'] = df_pca['class'].apply(int)
+    plt.figure()
+    for c in df_pca['class'].unique():     
+        plt.scatter(df_pca[df_pca['class'] == c]['First_Component'], \
+            df_pca[df_pca['class'] == c]['Second_Component'], color = LEGENDS_NUM[param][c])
+    plt.title(f'pca for {param}')
+    plt.legend(LEGENDS[param])   
+
+
 
     pca = PCA(n_components=len(data_std[0]))
     X_pca = pca.fit_transform(data_std)
@@ -68,11 +74,15 @@ def analyze(data_dummy, target, param): #main analysis function - PCA, sTNE, dec
 
     X_tsne_data = np.vstack((data_tsne.T, target)).T
     df_tsne = pd.DataFrame(X_tsne_data, columns=['Dim1', 'Dim2', 'class'])
-    df_tsne['class'].apply(int)
+    df_tsne['class'] = df_tsne['class'].apply(int)
     #Plot the 2 components from t-SNE
-    sns.FacetGrid(df_tsne, hue='class')\
-       .map(plt.scatter, 'Dim1', 'Dim2')\
-       .add_legend(LEGENDS[param]);
+    plt.figure()
+    for c in df_tsne['class'].unique():     
+        plt.scatter(df_tsne[df_tsne['class'] == c]['Dim1'], \
+            df_tsne[df_tsne['class'] == c]['Dim2'], color = LEGENDS_NUM[param][c])
+    plt.title(f'pca for {param}')
+    plt.legend(list(LEGENDS[param].keys()))   
+
     # plt.show()
 
     model = DecisionTreeRegressor()
@@ -81,7 +91,7 @@ def analyze(data_dummy, target, param): #main analysis function - PCA, sTNE, dec
     to_remove_tree = np.argsort(importance)
     # summarize feature importance
     fig = plt.figure()
-    ax = fig.add_subplot(1, 1, 1) # I actually have many subplots, but this is not related to a problem
+    ax = fig.add_subplot(1, 1, 1) 
     ax.bar([x for x in data_dummy.columns], importance, align='center')
     ax.set_title('significance of parameters for Decision Tree predictor')
     ax.set_ylabel('significance')
@@ -108,7 +118,7 @@ def logistic(data_dummy, target, param): #logistic regression, with 10 top param
         ax.bar([x for x in TOP_TEN[param]], importance[i], align='center')
         ax.set_xticklabels([x for x in TOP_TEN[param]], rotation=70, ha='center')
         ax.set_title(f'significance of parameters for {param}, logistic regression ')
-       # plt.legend(LEGENDS[param])
+        fig.legend(LEGENDS[param])
 
     print(f'score for prediction of {param}: ', pred.score(data_std, target))
     plt.show()
@@ -132,12 +142,12 @@ def read_data(file): #main function
         if len(vals) == 2 :
             data[col] = apply_zerone(data, col, vals)
 
-    data_dummy = pd.get_dummies(data, drop_first=True)
+    data_dummy = pd.get_dummies(data, drop_first=True) #categorical data to binary 
 
     target_b = target.apply(lam_fail)
     data = deepcopy(data_dummy)
 
-    for i in range (3): 
+    for i in range (3): #here we reduce number of features to top 10 
         TOP_TEN_b= analyze(data, target_b, 'fails')
     TOP_TEN['fails'] = TOP_TEN_b
 
